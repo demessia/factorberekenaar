@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<title>Factorberekenaar</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400;600;800&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: invoer links, uitkomst rechts, daaronder wat-als en de tariefschaal. Smal scherm: alles onder elkaar. */
+:root{
+  --bg:#f3f5f1; --card:#ffffff; --fg:#17211b; --muted:#5b6a60; --line:#d9e0d8;
+  --accent:#1f6b43; --accent-soft:#dcefe3; --warn:#9a5b00; --warn-soft:#fbecd0; --bad:#a3261f; --bad-soft:#f8dcd9;
+  --display:"Schibsted Grotesk",system-ui,sans-serif; --mono:"JetBrains Mono",ui-monospace,Menlo,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#101612; --card:#18201b; --fg:#e8eee9; --muted:#9aaa9f; --line:#2a352d;
+  --accent:#5fbf86; --accent-soft:#1d3a29; --warn:#e2a64a; --warn-soft:#3a2c12; --bad:#ef8179; --bad-soft:#3d1e1b; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#101612; --card:#18201b; --fg:#e8eee9; --muted:#9aaa9f; --line:#2a352d;
+  --accent:#5fbf86; --accent-soft:#1d3a29; --warn:#e2a64a; --warn-soft:#3a2c12; --bad:#ef8179; --bad-soft:#3d1e1b; color-scheme:dark}
+*{box-sizing:border-box}
+html{background:var(--bg)}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--display);font-size:15px;line-height:1.5;
+  padding-block:24px 48px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.wrap{max-width:980px;margin:0 auto;display:grid;gap:16px}
+h1{font-size:clamp(1.6rem,4vw,2.2rem);margin:0;font-weight:800;letter-spacing:-.02em;text-wrap:balance}
+h2{font-size:.78rem;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin:0 0 12px;font-weight:600}
+.sub{color:var(--muted);margin:4px 0 0;max-width:62ch}
+.grid{display:grid;grid-template-columns:minmax(0,5fr) minmax(0,6fr);gap:16px}
+@media (max-width:720px){.grid{grid-template-columns:minmax(0,1fr)}}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:18px;min-width:0}
+label{display:block;font-size:.85rem;color:var(--muted);margin-bottom:6px}
+.row{display:flex;gap:8px;flex-wrap:wrap}
+.field{display:flex;flex-direction:column;flex:1 1 70px;min-width:0}
+input{width:100%;font:600 1.15rem var(--mono);color:var(--fg);background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:9px 10px;font-variant-numeric:tabular-nums}
+input:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.stack{display:grid;gap:16px}
+.big{font:800 clamp(2.4rem,7vw,3.4rem)/1 var(--mono);letter-spacing:-.03em;font-variant-numeric:tabular-nums}
+.big small{font:400 .9rem var(--display);color:var(--muted);letter-spacing:0;margin-left:6px}
+.kv{display:grid;grid-template-columns:1fr auto;gap:6px 12px;margin:14px 0 0;font-variant-numeric:tabular-nums}
+.kv dt{color:var(--muted)} .kv dd{margin:0;text-align:right;font-family:var(--mono)}
+.kv .tot{font-weight:600;font-size:1.05rem;color:var(--fg)}
+.pill{display:inline-block;padding:3px 10px;border-radius:99px;font-size:.8rem;font-weight:600;background:var(--accent-soft);color:var(--accent)}
+.pill.warn{background:var(--warn-soft);color:var(--warn)} .pill.bad{background:var(--bad-soft);color:var(--bad)}
+.hero{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap}
+.money{font:800 clamp(1.8rem,5vw,2.4rem)/1.1 var(--mono);color:var(--accent);margin-top:14px;font-variant-numeric:tabular-nums}
+.money span{display:block;font:400 .8rem var(--display);color:var(--muted);margin-bottom:2px}
+.note{font-size:.85rem;color:var(--muted);margin:12px 0 0}
+.delta{font-family:var(--mono);font-weight:600}
+.pos{color:var(--accent)} .neg{color:var(--bad)}
+.scroll{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums;font-size:.9rem}
+th,td{padding:7px 10px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap}
+th:first-child,td:first-child{text-align:left}
+th{font-size:.75rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:600}
+td{font-family:var(--mono)}
+tr.on td{font-weight:800;box-shadow:inset 0 2px 0 var(--fg),inset 0 -2px 0 var(--fg)}
+tr.on td:first-child::before{content:'\25B6\00a0'}
+tr.band td{font-family:var(--display);font-size:.85rem;white-space:normal;text-align:left;color:#17211b}
+@media (prefers-reduced-motion:no-preference){.big,.money{transition:color .2s}}
+</style>
+</head>
+<body>
+
+
+<div class="wrap">
+  <header>
+    <h1>Factorberekenaar</h1>
+    <p class="sub">Vul je beltijd en je sales in. Je ziet direct je factor, uurtarief en vergoeding incl. 21% btw, en hoeveel ruimte je nog hebt voor de volgende drempel.</p>
+  </header>
+
+  <div class="grid">
+    <section class="card" aria-labelledby="h-in">
+      <h2 id="h-in">Jouw stand</h2>
+      <div class="stack">
+        <div>
+          <label for="uu">Totale beltijd</label>
+          <div class="row">
+            <div class="field"><input id="uu" type="number" inputmode="numeric" min="0" step="1" value="12" aria-label="Uren"><label for="uu" style="margin:4px 0 0">uur</label></div>
+            <div class="field"><input id="mm" type="number" inputmode="numeric" min="0" max="59" step="1" value="0" aria-label="Minuten"><label for="mm" style="margin:4px 0 0">min</label></div>
+            <div class="field"><input id="ss" type="number" inputmode="numeric" min="0" max="59" step="1" value="0" aria-label="Seconden"><label for="ss" style="margin:4px 0 0">sec</label></div>
+          </div>
+        </div>
+        <div>
+          <label for="sales">Totale sales (€ per maand, opgeteld)</label>
+          <input id="sales" type="number" inputmode="decimal" min="0" step="0.5" value="84">
+        </div>
+        <p class="note" style="margin:0">Startwaarden zijn de stand van vandaag (12:00 uur, €84). Pas ze aan.</p>
+      </div>
+    </section>
+
+    <section class="card" aria-live="polite" aria-labelledby="h-out">
+      <h2 id="h-out">Uitkomst</h2>
+      <div class="hero">
+        <div class="big"><span id="factor">0,00</span><small>factor</small></div>
+        <span class="pill" id="tierpill">schaal</span>
+      </div>
+      <div class="money"><span>Vergoeding incl. 21% btw</span><b id="incl">€0,00</b></div>
+      <dl class="kv">
+        <dt>Uurtarief</dt><dd id="rate"></dd>
+        <dt>Uren × tarief</dt><dd id="base"></dd>
+        <dt>Bonus</dt><dd id="bonus"></dd>
+        <dt>Totaal excl. btw</dt><dd id="excl" class="tot"></dd>
+        <dt>Btw 21%</dt><dd id="vat"></dd>
+      </dl>
+      <p class="note" id="margin"></p>
+      <p class="note" id="next"></p>
+    </section>
+  </div>
+
+  <section class="card" aria-labelledby="h-wat">
+    <h2 id="h-wat">Wat als ik nog doorbel?</h2>
+    <div class="row">
+      <div class="field" style="flex-basis:160px"><label for="xmin">Extra minuten bellen</label><input id="xmin" type="number" inputmode="numeric" min="0" step="1" value="15"></div>
+      <div class="field" style="flex-basis:160px"><label for="xsale">Extra sales (€ per maand)</label><input id="xsale" type="number" inputmode="decimal" min="0" step="0.5" value="0"></div>
+    </div>
+    <dl class="kv">
+      <dt>Nieuwe factor</dt><dd id="w-f"></dd>
+      <dt>Nieuw uurtarief</dt><dd id="w-r"></dd>
+      <dt>Vergoeding incl. btw</dt><dd id="w-i" class="tot"></dd>
+      <dt>Verschil met nu (incl. btw)</dt><dd id="w-d" class="delta"></dd>
+    </dl>
+  </section>
+
+  <section class="card" aria-labelledby="h-tab">
+    <h2 id="h-tab">Tariefschaal 2026</h2>
+    <div class="scroll"><table>
+      <thead><tr><th>Factor</th><th>Per uur</th><th>Bonus</th></tr></thead>
+      <tbody id="tbody"></tbody>
+    </table></div>
+    <p class="note">Bonus: vanaf factor 6 is €100 bij de eerste 10 uur, daarna €75 per volgende 10 uur. Vanaf factor 9 is het €100 per 10 uur. Ik reken met volle blokken van 10 uur. De factor is hier sales gedeeld door beluren; Kontect heeft de formule niet schriftelijk bevestigd, dus controleer die en de afronding bij hen.</p>
+  </section>
+</div>
+
+<script>
+var TIERS=[[0,10,"0,00 t/m 2,99","#fce2d5"],[3,12.5,"3,00 t/m 3,99","#f6c7ab"],[4,16.5,"4,00 t/m 4,99","#f1a983"],[5,20,"5,00 t/m 5,99","#be5013"],[6,22.5,"6,00 t/m 6,99","#c9edfb"],[7,25,"7,00 t/m 7,49","#95dcf8"],[7.5,27.5,"7,50 t/m 7,99","#61cbf3"],[8,30,"8,00 t/m 8,99","#f2cfef"],[9,30,"9,00 t/m 9,99","#e49edd"],[10,35,"10,00 t/m 11,99","#d86dcd"],[12,37.5,"12,00 t/m 12,49","#daf2d0"],[12.5,42.5,"12,50 t/m 13,99","#c1efc8"],[14,45,"14,00 t/m 14,99","#c1efc8"],[15,47.5,"15,00 t/m 16,99","#8ed974"],[17,50,"17,00 t/m 17,49","#3c7d21"],[17.5,55,"17,50 en hoger","#275316"]];
+var EPS=1e-9;
+var $=function(id){return document.getElementById(id)};
+var eur=new Intl.NumberFormat("nl-NL",{style:"currency",currency:"EUR"});
+var num=new Intl.NumberFormat("nl-NL",{minimumFractionDigits:2,maximumFractionDigits:2});
+function tierOf(f){var i=0;for(var k=0;k<TIERS.length;k++){if(f+EPS>=TIERS[k][0])i=k}return i}
+function bonusFor(f,h){var b=Math.floor(h/10+EPS);if(f+EPS<6||b<1)return 0;return f+EPS>=9?100*b:100+75*(b-1)}
+function calc(h,s){var f=h>0?s/h:0,i=tierOf(f),r=TIERS[i][1],bo=bonusFor(f,h),ex=h*r+bo;return{f:f,i:i,r:r,base:h*r,bonus:bo,excl:ex,incl:ex*1.21}}
+function bonusLabel(i){var f=TIERS[i][0];return f<6?"geen":(f>=9?"€100 per 10 uur":"€100, dan €75")}
+function val(id){var v=parseFloat($(id).value);return isFinite(v)&&v>0?v:0}
+function mins(x){var t=Math.round(x*60);var m=Math.floor(t/60),s=t%60;return m+" min"+(s?" "+s+" sec":"")}
+function build(){var h="";TIERS.forEach(function(t,i){var dk=(i===3||i===14||i===15);h+='<tr data-i="'+i+'" style="background:'+t[3]+';color:'+(dk?"#ffffff":"#17211b")+'"><td>'+t[2]+'</td><td>'+eur.format(t[1])+'</td><td>'+bonusLabel(i)+'</td></tr>'});h+='<tr class="band" style="background:#fffd00"><td colspan="3">Vanaf factor 6: €100 bonus bij de eerste 10 uur, daarna €75.</td></tr><tr class="band" style="background:#ffc406"><td colspan="3">Vanaf factor 9: €100 bonus bij elke 10 uur.</td></tr>';$("tbody").innerHTML=h}
+function render(){
+  var hrs=val("uu")+Math.min(val("mm"),59)/60+Math.min(val("ss"),59)/3600, s=val("sales");
+  var c=calc(hrs,s);
+  $("factor").textContent=num.format(c.f);
+  $("rate").textContent=eur.format(c.r)+" per uur";
+  $("base").textContent=eur.format(c.base);
+  $("bonus").textContent=eur.format(c.bonus);
+  $("excl").textContent=eur.format(c.excl);
+  $("vat").textContent=eur.format(c.incl-c.excl);
+  $("incl").textContent=eur.format(c.incl);
+  var pill=$("tierpill");pill.textContent="schaal "+TIERS[c.i][2];
+  var thr=TIERS[c.i][0],mEl=$("margin"),nEl=$("next");
+  var left=thr>0&&s>0?(s/thr-hrs)*60:null;
+  pill.className="pill";
+  if(left!==null){
+    if(left<1)pill.className="pill bad";else if(left<10)pill.className="pill warn";
+    mEl.textContent="Je kunt zonder nieuwe sale nog "+mins(left/60)+" bellen voordat je onder factor "+num.format(thr)+" komt. Daarna zakt je tarief naar "+eur.format(TIERS[Math.max(c.i-1,0)][1])+" per uur.";
+  } else {mEl.textContent=thr>0?"Vul je sales in om je marge te zien.":"Je zit in de laagste schaal.";}
+  if(c.i<TIERS.length-1&&hrs>0){
+    var nt=TIERS[c.i+1],need=nt[0]*hrs-s;
+    nEl.textContent="Voor factor "+num.format(nt[0])+" ("+eur.format(nt[1])+" per uur) heb je bij deze beltijd nog "+eur.format(Math.max(need,0))+" extra aan sales nodig.";
+  } else {nEl.textContent=""}
+  var rows=document.querySelectorAll("#tbody tr[data-i]");rows.forEach(function(r){r.className=(+r.getAttribute("data-i")===c.i)?"on":""});
+  var w=calc(hrs+val("xmin")/60,s+val("xsale"));
+  $("w-f").textContent=num.format(w.f);
+  $("w-r").textContent=eur.format(w.r)+" per uur";
+  $("w-i").textContent=eur.format(w.incl);
+  var d=w.incl-c.incl,dEl=$("w-d");dEl.textContent=(d>=0?"+":"-")+eur.format(Math.abs(d));dEl.className="delta "+(d>=0?"pos":"neg");
+  try{localStorage.setItem("fr",JSON.stringify({uu:$("uu").value,mm:$("mm").value,ss:$("ss").value,sales:$("sales").value,xmin:$("xmin").value,xsale:$("xsale").value}))}catch(e){}
+}
+build();
+try{var sv=JSON.parse(localStorage.getItem("fr")||"null");if(sv)for(var k in sv){if($(k))$(k).value=sv[k]}}catch(e){}
+["uu","mm","ss","sales","xmin","xsale"].forEach(function(id){$(id).addEventListener("input",render)});
+render();
+</script>
+
+</body>
+</html>
